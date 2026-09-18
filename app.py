@@ -1,0 +1,56 @@
+import streamlit as st
+from PIL import Image
+
+st.title("📁 影像時序 GIF 動態圖製作工具")
+st.write("請直接將多張依照日期命名的圖片拖曳或上傳至下方，即可自動排序並製作幻燈片 GIF！")
+
+# 1. 側邊欄設定
+st.sidebar.header("⚙️ 設定選項")
+duration_ms = st.sidebar.slider("每張圖片停留時間 (毫秒)", min_value=200, max_value=3000, value=1000, step=100)
+
+# 2. 檔案上傳介面（支援多選上傳）
+uploaded_files = st.file_uploader("請選擇或拖曳 JPG/PNG 圖片檔案", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+
+if uploaded_files:
+    # 依照上傳的檔案名稱自動排序（確保依日期先後順序）
+    uploaded_files = sorted(uploaded_files, key=lambda x: x.name)
+    
+    st.success(f"✅ 成功上傳 {len(uploaded_files)} 張圖片！已自動按日期排序：")
+    
+    for idx, f in enumerate(uploaded_files, 1):
+        st.text(f"{idx}. {f.name}")
+
+    # 3. 製作 GIF 按鈕
+    if st.button("🚀 開始製作 GIF"):
+        with st.spinner("正在合成 GIF 中，請稍候..."):
+            # 讀取所有上傳的圖片
+            images = [Image.open(f) for f in uploaded_files]
+            
+            # 統一尺寸
+            base_size = images[0].size
+            resized_images = [img.resize(base_size, Image.Resampling.LANCZOS) for img in images]
+            
+            output_path = "slideshow.gif"
+            resized_images[0].save(
+                output_path,
+                save_all=True,
+                append_images=resized_images[1:],
+                duration=duration_ms,
+                loop=0
+            )
+            
+        st.success("🎉 GIF 製作完成！")
+        
+        # 網頁直接預覽
+        st.image(output_path, caption="幻燈片預覽", use_column_width=True)
+        
+        # 下載按鈕
+        with open(output_path, "rb") as file:
+            st.download_button(
+                label="📥 下載您的 GIF 檔案",
+                data=file,
+                file_name="terrain_slideshow.gif",
+                mime="image/gif"
+            )
+else:
+    st.info("💡 請先上方按鈕或拖曳上傳圖片以開始。")
