@@ -23,10 +23,8 @@ if uploaded_files:
     # 3. 製作 GIF 按鈕
     if st.button("🚀 開始製作 GIF"):
         with st.spinner("正在合成 GIF 中，請稍候..."):
-            # 讀取所有上傳的圖片
             images = [Image.open(f) for f in uploaded_files]
             
-            # 統一尺寸
             base_size = images[0].size
             resized_images = [img.resize(base_size, Image.Resampling.LANCZOS) for img in images]
             
@@ -41,10 +39,8 @@ if uploaded_files:
             
         st.success("🎉 GIF 製作完成！")
         
-        # 網頁直接預覽
         st.image(output_path, caption="幻燈片預覽", use_column_width=True)
         
-        # 下載按鈕
         with open(output_path, "rb") as file:
             st.download_button(
                 label="📥 下載您的 GIF 檔案",
