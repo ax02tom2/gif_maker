@@ -16,11 +16,11 @@ add_watermark = st.sidebar.checkbox("自動加入日期浮水印", value=True)
 
 if add_watermark:
     text_color = st.sidebar.color_picker("文字顏色", "#FF0000")
-    font_size = st.sidebar.slider("文字大小", 20, 500, 150, step=10)
+    font_size = st.sidebar.slider("文字大小", 10, 150, 40, step=2)
     text_pos = st.sidebar.selectbox("文字位置", ["右下", "左下", "右上", "左上"])
-    margin_pct = st.sidebar.slider("邊距往內縮 (百分比 %)", 1, 40, 12, step=1)
+    margin_pct = st.sidebar.slider("邊距往內縮 (百分比 %)", 1, 40, 5, step=1)
 else:
-    text_color, font_size, text_pos, margin_pct = "#FF0000", 150, "右下", 12
+    text_color, font_size, text_pos, margin_pct = "#FF0000", 40, "右下", 5
 
 # --- 自動下載清晰字型 ---
 font_path = "Roboto-Bold.ttf"
@@ -31,7 +31,7 @@ if not os.path.exists(font_path):
     except:
         pass
 
-# --- 浮水印繪製工具 (獨立出來以供預覽與生成共用) ---
+# --- 浮水印繪製工具 ---
 def apply_watermark(img, file_name_str, f_size, t_color, t_pos, m_pct):
     draw = ImageDraw.Draw(img)
     file_name = os.path.splitext(file_name_str)[0]
@@ -61,51 +61,79 @@ def apply_watermark(img, file_name_str, f_size, t_color, t_pos, m_pct):
     elif t_pos == "右上": xy = (w - tw - margin_x, margin_y)
     else: xy = (margin_x, margin_y)
 
-    shadow_offset = max(2, int(f_size * 0.08))
+    shadow_offset = max(1, int(f_size * 0.08))
     draw.text((xy[0]+shadow_offset, xy[1]+shadow_offset), display_text, fill="black", font=font)
     draw.text(xy, display_text, fill=t_color, font=font)
     
     return img
 
 # --- 主程式區塊 ---
-uploaded_files = st.file_uploader("請選擇或拖曳圖片檔案", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+uploaded_files = st.file_uploader("請選擇或拖曳圖片檔案 (JPG/PNG)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
 if uploaded_files:
-    # 確保依檔名排序
+    # --- 🛡️ 檔案大小防呆計算機制 ---
+    total_size_bytes = sum(getattr(f, "size", 0) for f in uploaded_files)
+    total_size_mb = total_size_bytes / (1024 * 1024)
+    MAX_LIMIT_MB = 1000.0  # 1GB 門檻
+
+    # 1. 顯示檔案總大小與數量
+    st.info(f"📊 已上傳 **{len(uploaded_files)}** 張圖片，總容量：**{total_size_mb:.2f} MB** / {int(MAX_LIMIT_MB)} MB")
+
+    # 2. 超過 1GB 嚴格攔截，中斷程式執行
+    if total_size_mb > MAX_LIMIT_MB:
+        st.error(
+            f"❌ 【容量超標警告】上傳檔案總大小為 **{total_size_mb:.2f} MB**，已超過 **{int(MAX_LIMIT_MB)} MB (1 GB)** 限制！\n\n"
+            "為避免伺服器記憶體崩潰，系統已強制暫停處理。請刪除部分圖片或壓縮後重新上傳。"
+        )
+        st.stop()  # 立即停止下方所有運算
+
+    # 3. 接近記憶體上限時提供黃色溫馨提醒
+    elif total_size_mb > 700.0:
+        st.warning(f"⚠️ 提醒：目前檔案總大小較大 ({total_size_mb:.2f} MB)，生成 GIF 可能需耗時數十秒，請耐心等候。")
+
+    # --- 圖片排序與即時預覽 ---
     uploaded_files = sorted(uploaded_files, key=lambda x: x.name)
     
-    # 1. 即時預覽區塊
     st.markdown("### 👁️ 浮水印即時預覽 (第一張圖片)")
     preview_file = uploaded_files[0]
-    preview_file.seek(0) # 確保讀取指標在最前面
+    preview_file.seek(0)
     preview_img = Image.open(preview_file).convert("RGBA")
+    
+    # 限制預覽圖解析度避免卡頓
+    preview_img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
     
     if add_watermark:
         preview_img = apply_watermark(preview_img, preview_file.name, font_size, text_color, text_pos, margin_pct)
     
-    st.image(preview_img.convert("RGB"), caption="💡 調整左側拉桿，此預覽圖會即時更新！確認無誤後再按下方按鈕。", use_container_width=True)
+    st.image(preview_img.convert("RGB"), caption="💡 調整左側拉桿，此預覽圖會即時輕量化更新！", use_container_width=True)
     
     st.markdown("---")
     
-    # 2. 產出 GIF 區塊
+    # --- 產出 GIF 區塊 ---
     if st.button("🚀 確認預覽無誤，開始製作 GIF"):
         with st.spinner("正在合成全部圖片中，請稍候..."):
             images = []
-            for f in uploaded_files:
-                f.seek(0) # 確保每張圖都能正確讀取
+            base_size = None
+            
+            for idx, f in enumerate(uploaded_files):
+                f.seek(0)
                 img = Image.open(f).convert("RGBA")
+                
+                if idx == 0:
+                    img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
+                    base_size = img.size
+                else:
+                    img = img.resize(base_size, Image.Resampling.LANCZOS)
+                
                 if add_watermark:
                     img = apply_watermark(img, f.name, font_size, text_color, text_pos, margin_pct)
                 images.append(img.convert("RGB"))
             
-            base_size = images[0].size
-            resized_images = [img.resize(base_size, Image.Resampling.LANCZOS) for img in images]
-            
             output_path = "slideshow.gif"
-            resized_images[0].save(
+            images[0].save(
                 output_path,
                 save_all=True,
-                append_images=resized_images[1:],
+                append_images=images[1:],
                 duration=duration_ms,
                 loop=0
             )
