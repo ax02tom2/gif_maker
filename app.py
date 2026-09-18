@@ -28,20 +28,18 @@ if uploaded_files:
     st.success(f"成功上傳 {len(uploaded_files)} 張圖片！")
     
     if st.button("開始製作 GIF"):
-        with st.spinner("正在合成中，請稍候..."):
+        with st.spinner("正在合成中..."):
             images = []
-            
             for f in uploaded_files:
                 img = Image.open(f).convert("RGBA")
                 if add_watermark:
                     draw = ImageDraw.Draw(img)
                     file_name = os.path.splitext(f.name)[0]
-                    
                     if len(file_name) == 7 and file_name.isdigit():
                         display_text = f"{file_name[:3]} / {file_name[3:5]} / {file_name[5:]}"
                     else:
                         display_text = file_name
-                        
+                    
                     font = ImageFont.load_default()
                     try:
                         font = ImageFont.truetype("DejaVuSans.ttf", font_size)
@@ -50,8 +48,7 @@ if uploaded_files:
                         
                     try:
                         left, top, right, bottom = font.getbbox(display_text)
-                        tw = right - left
-                        th = bottom - top
+                        tw, th = right - left, bottom - top
                     except:
                         tw, th = 200, 50
                         
