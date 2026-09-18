@@ -33,16 +33,20 @@ if uploaded_files:
                 loop=0
             )
             
+            # --- 修正處：將檔案轉為純資料流(Bytes)再讓網頁讀取，避開版本衝突 ---
+            with open(output_path, "rb") as file:
+                gif_bytes = file.read()
+                
         st.success("🎉 GIF 製作完成！")
         
-        st.image(output_path, caption="幻燈片預覽", use_column_width=True)
+        # 使用最新版的 use_container_width 參數，並直接讀取資料流
+        st.image(gif_bytes, caption="幻燈片預覽", use_container_width=True)
         
-        with open(output_path, "rb") as file:
-            st.download_button(
-                label="📥 下載您的 GIF 檔案",
-                data=file,
-                file_name="terrain_slideshow.gif",
-                mime="image/gif"
-            )
+        st.download_button(
+            label="📥 下載您的 GIF 檔案",
+            data=gif_bytes,
+            file_name="terrain_slideshow.gif",
+            mime="image/gif"
+        )
 else:
     st.info("💡 請先上方按鈕或拖曳上傳圖片以開始。")
