@@ -15,11 +15,12 @@ add_watermark = st.sidebar.checkbox("自動加入日期浮水印", value=True)
 
 if add_watermark:
     text_color = st.sidebar.color_picker("文字顏色", "#FF0000")
-    # 將文字大小上限調高到 500，適應高解析度空拍圖
     font_size = st.sidebar.slider("文字大小", 20, 500, 150, step=10)
     text_pos = st.sidebar.selectbox("文字位置", ["右下", "左下", "右上", "左上"])
+    # 新增：讓您可以自由調整字體往內縮的距離
+    margin_pct = st.sidebar.slider("邊距往內縮 (百分比 %)", 1, 40, 12, step=1)
 else:
-    text_color, font_size, text_pos = "#FF0000", 150, "右下"
+    text_color, font_size, text_pos, margin_pct = "#FF0000", 150, "右下", 12
 
 uploaded_files = st.file_uploader("請選擇或拖曳圖片檔案", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
@@ -29,8 +30,6 @@ if uploaded_files:
     
     if st.button("🚀 開始製作 GIF"):
         with st.spinner("正在合成中，請稍候..."):
-            
-            # --- 終極解法：強制下載保證可用的清晰粗體字型 ---
             font_path = "Roboto-Bold.ttf"
             if not os.path.exists(font_path):
                 try:
@@ -51,7 +50,6 @@ if uploaded_files:
                     else:
                         display_text = file_name
                     
-                    # 載入字型
                     try:
                         font = ImageFont.truetype(font_path, font_size)
                     except:
@@ -64,14 +62,15 @@ if uploaded_files:
                     except:
                         tw, th = font_size * len(display_text) * 0.6, font_size
 
-                    margin = max(50, int(w * 0.03)) # 邊距自適應
+                    # --- 核心修改：依照您拉桿設定的百分比往內縮 ---
+                    margin_x = int(w * (margin_pct / 100.0))
+                    margin_y = int(h * (margin_pct / 100.0))
                     
-                    if text_pos == "右下": xy = (w - tw - margin, h - th - margin)
-                    elif text_pos == "左下": xy = (margin, h - th - margin)
-                    elif text_pos == "右上": xy = (w - tw - margin, margin)
-                    else: xy = (margin, margin)
+                    if text_pos == "右下": xy = (w - tw - margin_x, h - th - margin_y)
+                    elif text_pos == "左下": xy = (margin_x, h - th - margin_y)
+                    elif text_pos == "右上": xy = (w - tw - margin_x, margin_y)
+                    else: xy = (margin_x, margin_y)
 
-                    # 繪製粗黑體陰影，防呆確保文字可見
                     shadow_offset = max(2, int(font_size * 0.08))
                     draw.text((xy[0]+shadow_offset, xy[1]+shadow_offset), display_text, fill="black", font=font)
                     draw.text(xy, display_text, fill=text_color, font=font)
