@@ -4,15 +4,12 @@ from PIL import Image
 st.title("📁 影像時序 GIF 動態圖製作工具")
 st.write("請直接將多張依照日期命名的圖片拖曳或上傳至下方，即可自動排序並製作幻燈片 GIF！")
 
-# 1. 側邊欄設定
 st.sidebar.header("⚙️ 設定選項")
 duration_ms = st.sidebar.slider("每張圖片停留時間 (毫秒)", min_value=200, max_value=3000, value=1000, step=100)
 
-# 2. 檔案上傳介面（支援多選上傳）
 uploaded_files = st.file_uploader("請選擇或拖曳 JPG/PNG 圖片檔案", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
 if uploaded_files:
-    # 依照上傳的檔案名稱自動排序（確保依日期先後順序）
     uploaded_files = sorted(uploaded_files, key=lambda x: x.name)
     
     st.success(f"✅ 成功上傳 {len(uploaded_files)} 張圖片！已自動按日期排序：")
@@ -20,7 +17,6 @@ if uploaded_files:
     for idx, f in enumerate(uploaded_files, 1):
         st.text(f"{idx}. {f.name}")
 
-    # 3. 製作 GIF 按鈕
     if st.button("🚀 開始製作 GIF"):
         with st.spinner("正在合成 GIF 中，請稍候..."):
             images = [Image.open(f) for f in uploaded_files]
