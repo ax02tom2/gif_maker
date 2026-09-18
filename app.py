@@ -2,43 +2,37 @@ import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 import os
 
-st.title("影像時序 GIF 動態圖製作工具")
-st.write("請上傳多張依照日期命名的圖片，即可自動排序並加入浮水印製作 GIF！")
+st.title("GIF Maker")
 
-st.sidebar.header("設定選項")
-duration_ms = st.sidebar.slider("每張圖片停留時間 (毫秒)", 200, 3000, 1000, 100)
+st.sidebar.header("Settings")
+duration_ms = st.sidebar.slider("Speed (ms)", 200, 3000, 1000, 100)
 
-st.sidebar.markdown("---")
-st.sidebar.header("日期浮水印設定")
-add_watermark = st.sidebar.checkbox("自動加入日期浮水印", value=True)
+add_watermark = st.sidebar.checkbox("Add Date Watermark", value=True)
 
 if add_watermark:
-    text_color = st.sidebar.color_picker("文字顏色", "#FF0000")
-    font_size = st.sidebar.slider("文字大小", 10, 150, 40, step=5)
-    text_pos = st.sidebar.selectbox("文字位置", ["右下", "左下", "右上", "左上"])
+    text_color = st.sidebar.color_picker("Color", "#FF0000")
+    font_size = st.sidebar.slider("Size", 10, 150, 40, 5)
+    text_pos = st.sidebar.selectbox("Position", ["BR", "BL", "TR", "TL"])
 else:
     text_color = "#FF0000"
     font_size = 40
-    text_pos = "右下"
+    text_pos = "BR"
 
-uploaded_files = st.file_uploader("請選擇或拖曳 JPG/PNG 圖片", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+uploaded_files = st.file_uploader("Upload JPG/PNG", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
 if uploaded_files:
     uploaded_files = sorted(uploaded_files, key=lambda x: x.name)
-    st.success(f"成功上傳 {len(uploaded_files)} 張圖片！")
+    st.success("Files uploaded!")
     
-    if st.button("開始製作 GIF"):
-        with st.spinner("正在合成中..."):
+    if st.button("Create GIF"):
+        with st.spinner("Processing..."):
             images = []
             for f in uploaded_files:
                 img = Image.open(f).convert("RGBA")
                 if add_watermark:
                     draw = ImageDraw.Draw(img)
                     file_name = os.path.splitext(f.name)[0]
-                    if len(file_name) == 7 and file_name.isdigit():
-                        display_text = f"{file_name[:3]} / {file_name[3:5]} / {file_name[5:]}"
-                    else:
-                        display_text = file_name
+                    display_text = file_name
                     
                     font = ImageFont.load_default()
                     try:
@@ -55,11 +49,11 @@ if uploaded_files:
                     w, h = img.size
                     margin = 30
                     
-                    if text_pos == "右下":
+                    if text_pos == "BR":
                         xy = (w - tw - margin, h - th - margin)
-                    elif text_pos == "左下":
+                    elif text_pos == "BL":
                         xy = (margin, h - th - margin)
-                    elif text_pos == "右上":
+                    elif text_pos == "TR":
                         xy = (w - tw - margin, margin)
                     else:
                         xy = (margin, margin)
@@ -84,6 +78,6 @@ if uploaded_files:
             with open(output_path, "rb") as file:
                 gif_bytes = file.read()
                 
-        st.success("GIF 製作完成！")
-        st.image(gif_bytes, caption="預覽", use_container_width=True)
-        st.download_button(label="下載 GIF 檔案", data=gif_bytes, file_name="slideshow.gif", mime="image/gif")
+        st.success("Done!")
+        st.image(gif_bytes, use_container_width=True)
+        st.download_button(label="Download GIF", data=gif_bytes, file_name="slideshow.gif", mime="image/gif")
